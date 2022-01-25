@@ -201,6 +201,8 @@
     [self.trackerView addGestureRecognizer:self.panGestureRecognizer];
     //    [self.trackerHandle addGestureRecognizer:self.panGestureRecognizer];
     
+
+  
     
     [self.leftThumbView.layer setMasksToBounds:YES];
     [self.leftOverlayView addSubview:self.leftThumbView];
@@ -211,13 +213,14 @@
     [self addSubview:self.leftOverlayView];
     
     // add right overlay view
-    CGFloat rightViewFrameX = CGRectGetWidth(self.frameView.frame) < CGRectGetWidth(self.frame) ? CGRectGetMaxX(self.frameView.frame) : CGRectGetWidth(self.frame) - self.thumbWidth;
+    CGFloat rightViewFrameX = 5 * self.widthPerSecond;
     self.rightOverlayView = [[UIView alloc] initWithFrame:CGRectMake(rightViewFrameX, 0, self.overlayWidth, CGRectGetHeight(self.frameView.frame))];
     if (self.rightThumbImage) {
         self.rightThumbView = [[ICGThumbView alloc] initWithFrame:CGRectMake(0, 0, self.thumbWidth, CGRectGetHeight(self.frameView.frame)) thumbImage:self.rightThumbImage];
     } else {
         self.rightThumbView = [[ICGThumbView alloc] initWithFrame:CGRectMake(0, 0, self.thumbWidth, CGRectGetHeight(self.frameView.frame)) color:self.themeColor right:YES];
     }
+  
     [self.rightThumbView.layer setMasksToBounds:YES];
     [self.rightOverlayView addSubview:self.rightThumbView];
     [self.rightOverlayView setUserInteractionEnabled:YES];
@@ -225,6 +228,9 @@
     [self.rightOverlayView addGestureRecognizer:rightPanGestureRecognizer];
     [self.rightOverlayView setBackgroundColor:[UIColor colorWithWhite:0 alpha:0.8]];
     [self addSubview:self.rightOverlayView];
+  
+  UIPanGestureRecognizer *framePanGestureRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(moveRightOverlayView:)];
+  [self.frameView addGestureRecognizer:framePanGestureRecognizer];
     
     [self updateBorderFrames];
     [self notifyDelegate];
@@ -258,12 +264,12 @@
         case UIGestureRecognizerStateChanged:
         {
             CGPoint point = [gesture locationInView:self];
-            
             int deltaX = point.x - self.leftStartPoint.x;
+          
+            // left
+            CGPoint leftCenter = self.leftOverlayView.center;
             
-            CGPoint center = self.leftOverlayView.center;
-            
-            CGFloat newLeftViewMidX = center.x += deltaX;;
+            CGFloat newLeftViewMidX = leftCenter.x += deltaX;
             CGFloat maxWidth = CGRectGetMinX(self.rightOverlayView.frame) - (self.minLength * self.widthPerSecond);
             CGFloat newLeftViewMinX = newLeftViewMidX - self.overlayWidth/2;
             if (newLeftViewMinX < self.thumbWidth - self.overlayWidth) {
@@ -274,8 +280,26 @@
             
             self.leftOverlayView.center = CGPointMake(newLeftViewMidX, self.leftOverlayView.center.y);
             self.leftStartPoint = point;
-            [self updateBorderFrames];
-            [self notifyDelegate];
+          
+            // right
+            CGPoint rightPoint = CGPointMake(CGRectGetMinX(self.rightOverlayView.frame) + deltaX, self.rightOverlayView.center.y);
+            CGPoint rightCenter = self.rightOverlayView.center;
+            
+            CGFloat newRightViewMidX = rightCenter.x += deltaX;
+            CGFloat minX = CGRectGetMaxX(self.leftOverlayView.frame) + self.minLength * self.widthPerSecond;
+            CGFloat maxX = CMTimeGetSeconds([self.asset duration]) <= self.maxLength + 0.5 ? CGRectGetMaxX(self.frameView.frame) : CGRectGetWidth(self.frame) - self.thumbWidth;
+            if (newRightViewMidX - self.overlayWidth/2 < minX) {
+                newRightViewMidX = minX + self.overlayWidth/2;
+            } else if (newRightViewMidX - self.overlayWidth/2 > maxX) {
+                newRightViewMidX = maxX + self.overlayWidth/2;
+            }
+            
+
+          self.rightOverlayView.center = CGPointMake(newRightViewMidX, self.rightOverlayView.center.y);
+          self.rightStartPoint = rightPoint;
+          
+          [self updateBorderFrames];
+          [self notifyDelegate];
             
             break;
         }
@@ -296,12 +320,12 @@
         case UIGestureRecognizerStateChanged:
         {
             CGPoint point = [gesture locationInView:self];
-            
             int deltaX = point.x - self.rightStartPoint.x;
+          
+            // right
+            CGPoint rightCenter = self.rightOverlayView.center;
             
-            CGPoint center = self.rightOverlayView.center;
-            
-            CGFloat newRightViewMidX = center.x += deltaX;
+            CGFloat newRightViewMidX = rightCenter.x += deltaX;
             CGFloat minX = CGRectGetMaxX(self.leftOverlayView.frame) + self.minLength * self.widthPerSecond;
             CGFloat maxX = CMTimeGetSeconds([self.asset duration]) <= self.maxLength + 0.5 ? CGRectGetMaxX(self.frameView.frame) : CGRectGetWidth(self.frame) - self.thumbWidth;
             if (newRightViewMidX - self.overlayWidth/2 < minX) {
@@ -310,10 +334,30 @@
                 newRightViewMidX = maxX + self.overlayWidth/2;
             }
             
-            self.rightOverlayView.center = CGPointMake(newRightViewMidX, self.rightOverlayView.center.y);
-            self.rightStartPoint = point;
-            [self updateBorderFrames];
-            [self notifyDelegate];
+          self.rightOverlayView.center = CGPointMake(newRightViewMidX, self.rightOverlayView.center.y);
+          self.rightStartPoint = point;
+          
+          
+          // left
+          CGPoint leftPoint = CGPointMake(CGRectGetMaxX(self.leftOverlayView.frame) + deltaX, self.leftOverlayView.center.y);
+          CGPoint leftCenter = self.leftOverlayView.center;
+          
+          CGFloat newLeftViewMidX = leftCenter.x += deltaX;;
+          CGFloat maxWidth = CGRectGetMinX(self.rightOverlayView.frame) - (self.minLength * self.widthPerSecond);
+          CGFloat newLeftViewMinX = newLeftViewMidX - self.overlayWidth/2;
+          if (newLeftViewMinX < self.thumbWidth - self.overlayWidth) {
+              newLeftViewMidX = self.thumbWidth - self.overlayWidth + self.overlayWidth/2;
+          } else if (newLeftViewMinX + self.overlayWidth > maxWidth) {
+              newLeftViewMidX = maxWidth - self.overlayWidth / 2;
+          }
+          
+          
+          self.leftOverlayView.center = CGPointMake(newLeftViewMidX, self.leftOverlayView.center.y);
+
+          self.leftStartPoint = leftPoint;
+          
+          [self updateBorderFrames];
+          [self notifyDelegate];
             
             break;
         }
