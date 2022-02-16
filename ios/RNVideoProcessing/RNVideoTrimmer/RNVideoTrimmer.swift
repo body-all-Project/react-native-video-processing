@@ -207,7 +207,7 @@ class RNVideoTrimmer: NSObject {
         precondition(asset.isExportable)
 
         if eTime == nil {
-            eTime = Float(asset.duration.seconds)
+            eTime = 5
         }
         if sTime == nil {
             sTime = 0
@@ -244,7 +244,7 @@ class RNVideoTrimmer: NSObject {
         }
 
         do {
-          try composition.insertTimeRange(timeRange, of: asset, at: CMTime.zero)
+          try composition.insertTimeRange(timeRange, of: asset, at: startTime)
         } catch {
           callback(["Error inserting time range", NSNull()])
           // Error handling code here
