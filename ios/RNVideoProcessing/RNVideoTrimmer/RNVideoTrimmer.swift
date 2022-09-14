@@ -27,13 +27,18 @@ class RNVideoTrimmer: NSObject {
 
   @objc func getVideoOrientationFromAsset(asset : AVAsset) -> UIImage.Orientation {
     let videoTrack: AVAssetTrack? = asset.tracks(withMediaType: .video)[0]
-    let size = videoTrack!.naturalSize
+    var size = videoTrack!.naturalSize
 
     let txf: CGAffineTransform = videoTrack!.preferredTransform
+    if (size.width > size.height) {
+      let tempWidth = size.width;
+      size.width = size.height;
+      size.height = tempWidth;
+    }
 
     if (size.width == txf.tx && size.height == txf.ty) {
       return .left;
-    } else if (txf.tx == 0 && txf.ty == 0) {
+    } else if (txf.tx == 0 && txf.ty == 0 && txf.a == 1 && txf.d == 1) {
       return .right;
     } else if (txf.tx == 0 && txf.ty == size.width) {
       return .down;
@@ -41,6 +46,7 @@ class RNVideoTrimmer: NSObject {
       return .up;
     }
   }
+
 
   @objc func crop(_ source: String, options: NSDictionary, callback: @escaping RCTResponseSenderBlock) {
 
